@@ -1,0 +1,7 @@
+# ignore dataset
+nba_logreg.csv
+
+# ignore env packages
+/venv/*
+!/venv/.gitkeep
+
