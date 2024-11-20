@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from joblib import load
 
 
@@ -51,10 +52,15 @@ def transform_data(df_player, model_name):
         X_data (ndarray): 2D array of shape (1,n_features) containing data of a single player
     '''
     
+    # log transformation
+    exclude_columns = ['Name','GP','FT%','TARGET_5Yrs']
+    columns_to_transform = df_player.columns.difference(exclude_columns)
+    df_player[columns_to_transform] = df_player[columns_to_transform].apply(np.log1p)        
+    
     # drop irrelevant features
     columns_to_drop = {'best_model':[],
-                       'low_risk_model':[],
-                       'balanced_model':['3P Made', '3PA']}
+                       'high_precision_model':['3P Made', '3PA'],
+                       'high_recall_model':[]}
     df_player.drop(columns_to_drop[model_name], axis=1, inplace=True)
     
     # dataframe to array
