@@ -99,9 +99,9 @@ async def get_prediction(
                     ):
 
     default_risks = {
-        'Best_Model' : 0.6242, 
-        'High_precision' : 0.6506, 
-        'High_recall' : 0.7237
+        'Best_Model' : 0.6128, 
+        'High_precision' : 0.6417, 
+        'High_recall' : 0.5968
         }
     
     if risk is None:
@@ -109,8 +109,8 @@ async def get_prediction(
 
     
     models_names_dict = {'Best_Model' : 'best_model',
-                         'High_precision' : 'low_risk_model',
-                         'High_recall' : 'balanced_model'}
+                         'High_precision' : 'high_precision_model',
+                         'High_recall' : 'high_recall_model'}
     model = models_names_dict[user_model]
 
     predictions = get_new_model_prediction(player, risk, model)
