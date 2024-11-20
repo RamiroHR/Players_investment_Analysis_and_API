@@ -1,3 +1,6 @@
+# Author
+Ramiro H. Rodriguez
+
 # Project description
 Create a model that predicts if an NBA player will have a carrer longer than 5 years, making it a good investment opportunity.  
 Create an api wrapping this model to assits users in deciding if investing in a particular player is a good decision or not.  
