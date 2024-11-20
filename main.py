@@ -3,6 +3,9 @@ from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Optional 
 
+import src.data_processing as dp
+import src.models as ml
+
 
 ## instantiate the api and define the tags meatadata & security protocol
 tags_metadata = [
@@ -14,13 +17,11 @@ tags_metadata = [
 
 api = FastAPI(
     title = "NBA players",
-    description = "Predict if a player will have career longer than 5 years",
+    description = "Predict if a player is likely to have a career longer than 5 years or not based on his game statistics. \n \
+                   Evaluate the investment pertinence with the model confidence (tpr) and a user defined assumed risk (fpr)",
     version = '1.0.0',
     openapi_tags = tags_metadata
 )
-
-
-model_path = '.\ ' 
 
 
 
@@ -37,121 +38,147 @@ model_path = '.\ '
 #################################################################################
 
 
-###========================= app status =========================###
+###================================= app status ======================================###
 @api.get('/app_status', name = 'Quick test if the API is running',
-                    tags = ['Public'])
+         tags = ['Public'])
 async def get_app_status():
     return {'status' : 'App is available'}
 
 
-# @api.get('/')
-# def get_index():
-#     return {'data': 'hello world'}
-    
-# @api.get('/item/{itemid}')
-# def get_item(itemid):
-#     return {
-#         "route" : "dynamic", 
-#         "itemid": itemid
-#     }
-
-# @api.get('/')
-# def get_index(argument1):
-#     return {
-#         'data': argument1
-#     }
-  
-# @api.get('/typed')
-# def get_typed(argument1: int):
-#     return {
-#         'data': argument1 + 1
-#     }
-    
 
 
-#========================== Get model prediction (singular) ==========================###
+#################################################################################
+########################## Define Private Methods ###############################
+#################################################################################
+
+
+
+###============================= Get model prediction ===============================###
 
 class Player(BaseModel):
-    # itemid: int
-    # description: str
-    # owner: Optional[str] = None
-    Name: str = Field(default='playerName', description="The player name")
-    GamesPlayed: int = Field(..., ge=0, description="The player name")
-    MinutesPlayed: float = Field(..., ge=0)
-    PointsPerGame: float = Field(..., ge=0)
-    FieldGoalsMade: float = Field(..., ge=0)
-    FleldGoalAttempts: float = Field(..., ge=0)
-    FieldGoalPercent: float = Field(..., ge=0, le=100)
-    # _3PointMade: float
-    # _3PointAttempts: float
-    # _3PointPercent: float
-    # FreeThrowMade: float
-    # FreeThrowAttempts: float
-    # FreeThrowPercent: float
-    # OffensiveRebounds: float
-    # DefensiveRebcunds: float
-    # Rebounds: float
-    # Assists: float
-    # Steals: float
-    # Blocks: float
-    # Turnovers: float
+    """Encapsulates a single player statistic data"""
+    Name: str = Field(default='playerName', description="The player's name")
+    GamesPlayed: int = Field(..., ge=0, description="Number of games played")
+    MinutesPlayed: float = Field(..., ge=0, description="Minutes played per game")
+    PointsPerGame: float = Field(..., ge=0, description="Points per game")
+    FieldGoalsMade: float = Field(..., ge=0, description="Number of basket scored from the field, excluding free throws, per game")
+    FieldGoalAttempts: float = Field(..., ge=0, description="Field goals attempts, per game")
+    FieldGoalPercent: float = Field(..., ge=0, le=100, description="Percentage of field goals attemps that are successfull")
+    ThreePointMade: float = Field(..., ge=0, description="Number of 3-points made from beyond the 3-point line, per game")
+    ThreePointAttempts: float = Field(..., ge=0, description="Number of shots made from beyond the 3-point line, per game")
+    ThreePointPercent: float = Field(..., ge=0, le=100, description="Percentage of 3-point attemps that are successfull")
+    FreeThrowMade: float = Field(..., ge=0, description="Number of shots made from the free-throw line, per game")
+    FreeThrowAttempts: float = Field(..., ge=0, description="Number of shots attempted from the free-throw line, per game")
+    FreeThrowPercent: float = Field(..., ge=0, le=100, description="Percentage of free throws attempts that are sucessfull")
+    OffensiveRebounds: float = Field(..., ge=0, description="Number of times,per game, that a player recovers the ball after a missed shot by their own team")
+    DefensiveRebounds: float = Field(..., ge=0, description="Number of times,per game, that a player recovers the ball after a missed shot by the opponent team")
+    Rebounds: float = Field(..., ge=0, description="Total number of rebouns a player collects (OREB + DREB)")
+    Assists: float = Field(..., ge=0, description="Number of passes, by game, made to a teammate that resulting in points")
+    Steals: float = Field(..., ge=0, description="Number of times per game, a player steels the ball from the opponent team.")
+    Blocks: float = Field(..., ge=0, description="Number of times per game, a player stops an apponent attack")
+    Turnovers: float = Field(..., ge=0, description="Number of times per game, a player lossses possesion of the ball to the opposing team")
 
 
-# Predefined 'assets' present in the database.
-available_models = ['Null', 'Best']
+# Predefined the available models a user can choose:
+available_models = ['Best_Model', 'High_precision', 'High_recall']
 Models = Enum('Models', {item: item for item in available_models}, type = str)
 
-@api.post('/prediction', name = 'Get Model Prediction',
-                         description = 'Get the prediction for a single player base on his stats data. Return a prediction, the investment potential(tpr) and the assumed risk (fpr)',
-                         tags = ['Users'])
 
+# Define endpoint to request a prediction by the model:
+@api.post('/prediction', name = 'Get Model Prediction',
+                         description = 'Predict for a  single player based on his stats data',
+                         tags = ['Users'])
 async def get_prediction(
                     player : Player,
-                    risk : float = Query(0.3368, description="The risk factor, default is 0.3368"),
-                    model : Models = Query("Best", description="The model to be used for prediction, default is 'Best'"),
+                    user_model : Models = Query('Best_Model', 
+                                                description="The model to be used to make predictions, default is 'Best'"),
+                    risk : Optional[float] = Query(None, 
+                                                   description="Admissible risk factor [0,1]. Default best value depends on the model.",
+                                                   ge=0.0,
+                                                   le=1.0),
                     ):
 
+    default_risks = {
+        'Best_Model' : 0.6242, 
+        'High_precision' : 0.6506, 
+        'High_recall' : 0.7237
+        }
+    
+    if risk is None:
+        risk = default_risks[user_model]
+
+    
+    models_names_dict = {'Best_Model' : 'best_model',
+                         'High_precision' : 'low_risk_model',
+                         'High_recall' : 'balanced_model'}
+    model = models_names_dict[user_model]
+
     predictions = get_new_model_prediction(player, risk, model)
-        
+    
+    outcome_message, suggest_message = get_api_message(predictions,player.Name)
+    
     # print formatted predictions
     return {
-            'Prediction' : f'Player {player.Name} has high potential',
-            'tpr' : f"{predictions['probability']*100: .1f} % probability of investing in a good player",
-            'fpr' : f"{predictions['threshold']*100: .1f} % probability of investing in a wrong player (risk)",
-            'predicted prob' : predictions['tpr'],
-            'threshold proba' : predictions['tpr']
+            'Prediction' : outcome_message,
+            'Suggestion' : suggest_message,
+            'predicted probability' : round(predictions['probability'],4),
+            'tpr' : f"The model has {predictions['tpr']*100: .1f} % rate of detecting a good player",
+            'fpr' : f"the model has {predictions['fpr']*100: .1f} % rate of suggesting a wrong player (risk)",
+            'threshold probability' : round(predictions['threshold'],4)
             }
     
 
-    
+
 def get_new_model_prediction(player, risk, model):
-
-    # # format player stats into an array or dataframe    
-    # df_player = format_player_data(player)
+    '''
+    Process the endpoint input data and make a prediction with the selected model
     
-    # # and data tranformation for model
-    # features = transform_data(df_player)
+    Parameters:
+        player (Player): The player statistic passed to api "Get Model Prediction" method.
+        risk (float): Accepted false positive rate (risk of investing in the wrong player).
+        model (str): Name of the model to use for predictions.
 
-    # # get model
-    # trained_model = get_trained_model(model)
+    Returns:
+        predictions (dict): Encapsulates the predicted class, probability, classification threshold, tpr and fpr.
+    '''
 
-    # # get model probability predictions
-    # probability = predict_probability(trained_model, features)
-
-    # # get probability threshold from desired risk (use ROC-AUC)
-    # threshold, risk_tpr, risk_fpr = get_probability_threshold(risk, model)
+    # format player stats into an array or dataframe    
+    df_player = dp.make_dataset(player)
     
-    # # compare prob prediction with threshold to define final prediction
-    # pred_class = get_predicted_class(probability, threshold)
+    # and data tranformation for model
+    features = dp.transform_data(df_player, model)
+
+    # get model
+    trained_model = ml.get_trained_model(model)
+
+    # get model probability predictions
+    probability = ml.predict_probability(trained_model, features)
+
+    # get probability threshold from desired risk (use ROC-AUC)
+    threshold, risk_tpr, risk_fpr = ml.get_probability_threshold(risk, model)
+    
+    # compare probability prediction with threshold to define final prediction
+    predicted_class = ml.get_predicted_class(probability, threshold)
     
     predictions = {
-        'predicted_class' : 1,  #pred_class
-        'probability' : 0.8,   #probablity
-        'threshold' : 0.6,     #threshold
-        'tpr' : 0.77,          #risk_tpr
-        'fpr' : 0.33           #risk_fpr
+        'predicted_class' : predicted_class,  #pred_class
+        'probability' : probability,          #probablity
+        'threshold' : threshold,              #threshold
+        'tpr' : risk_tpr,                     #risk_tpr
+        'fpr' : risk_fpr                      #risk_fpr
     }
     
     return predictions
 
+
+def get_api_message(predictions,player_name):
+    """Define message to print as a function of the predicted class membership"""
     
+    if predictions['predicted_class'] == 1:
+        outcome_mssg = f'Player {player_name} is predicted to stay longer than 5 years.'
+        suggest_mssg = 'Potentially a good investment'
+    else:
+        outcome_mssg = f'Player {player_name} is predicted to stay less than 5 years.'
+        suggest_mssg = 'Less interesting or risky investment'
+    
+    return outcome_mssg, suggest_mssg
