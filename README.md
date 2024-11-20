@@ -2,6 +2,8 @@
 Create a model that predicts if an NBA player will have a carrer longer than 5 years, making it a good investment opportunity.  
 Create an api wrapping this model to assits users in deciding if investing in a particular player is a good decision or not.  
 
+<br>
+
 
 # Project Organization
     |
@@ -56,6 +58,14 @@ The ```Modeling``` notebook explore the performance fo differents models and is 
 <br>
 
 # Launch the API
+In the API the user cna chose between 3 models available:  
+* The **Best** model which for a given risk tries to maximize the the recall (model with the best auc score)
+* The **High accuracy** model which keeps the precision high for an acceptable recall
+* the **High recall** model which tries to reach a high recall, at the expenses of a lower precision.
+
+For the 3 models the user can select a desired **risk** which account for the rate of false positive: the rate at which a less promizing player is mistakenly classified as a player that will have a career longer than 5 years, resulting in a bad investment.
+
+
 To lunch the API in the localhost run the following comand in a terminal:  
 ```
 uvicorn main:api --reload
