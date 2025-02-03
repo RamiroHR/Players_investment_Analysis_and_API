@@ -1,7 +1,7 @@
 # ignore dataset
-nba_logreg.csv
+data.csv
 
 # ignore env packages
-/venv/*
-!/venv/.gitkeep
+venv/*
+!venv/.gitkeep
 

@@ -1,6 +1,10 @@
 # Author
 Ramiro H. Rodriguez
 
+# Version
+Demo_1.3  
+
+
 # Project description
 Create a model that predicts if an NBA player will have a carrer longer than 5 years, making it a good investment opportunity.  
 Create an api wrapping this model to assits users in deciding if investing in a particular player is a good decision or not.  
@@ -17,7 +21,7 @@ Create an api wrapping this model to assits users in deciding if investing in a 
     ├── venv/
     |
     |
-    ├── nba_logreg.csv             <- Dataset: NBA player's games statistics
+    ├── data.csv                   <- Dataset: player's games statistics
     |
     |
     ├── Data_Exploration.ipynb     <- Notebook for data exploration and visualizations
@@ -49,7 +53,7 @@ For example, using _vortualenv_ in a terminal:
 <br>
 
 # Data
-The file ```nba_logreg.csv``` contains labeled data of several players. Data consists in various games statistics of the player.
+The file ```data.csv``` contains labeled data of several players. Data consists in various games statistics of the player.
 
 <br>
 
